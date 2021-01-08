@@ -22,8 +22,8 @@
 
 #define MPU 0x68
 
-float GyroErrorZ;
-float elapsedTime, currentTime, previousTime;
+float GyroErrorZ = 0, yaw = 0;
+float elapsedTime, currentTime = 0, previousTime;
 
 SoftwareSerial esp32(esp32_rx, esp32_tx);
 IRrecv remote(ir);
@@ -45,27 +45,26 @@ void setup() {
   //pinMode(mB_dir, OUTPUT);
   //pinMode(mB_brake, OUTPUT);
 
-  esp32.begin(9600);
+  //esp32.begin(9600);
 
-  //Wire.begin();
-
-  //Wire.beginTransmission(MPU);
-  //Wire.write(0x6B);
-  //Wire.write(0x00);
-  //Wire.endTransmission(true);
-
-  //GyroErrorZ = calculate_IMU_error();
+  Wire.begin();
+  Wire.beginTransmission(MPU);
+  Wire.write(0x6B);
+  Wire.write(0x00);
+  Wire.endTransmission(true);
+  calculate_IMU_error();
+  Serial.print("IMU Error: ");
+  Serial.println(GyroErrorZ);
 
   //remote.enableIRIn();
 
   pinMode(trig, OUTPUT);
   pinMode(echo, INPUT);
+  long ultra_duration;
+  int ultra_distance;
 
   //servo.attach(servo_pin);
   //servo.write(servo_pos);
-
-  long ultra_duration;
-  int ultra_distance;
 
   Serial.println("Initialised");
 }
@@ -80,7 +79,6 @@ void loop() {
   stop();
   delay(1500);
 
-  */
   Serial.println("sending");
   esp32.print("S");
   bool x = true;
@@ -110,10 +108,11 @@ void loop() {
       }
     }
   }
-  /*Serial.println(get_gyro_angle());
+  */get_gyro_angle();
+  Serial.println(yaw);
   delay(1000);
 
-  if (remote.decode(&results)) {     
+  /*if (remote.decode(&results)) {     
     int value = results;
     Serial.println(" ");     
     Serial.print("Code: ");     
@@ -199,7 +198,7 @@ void rotation(float angle, bool clockwise) {
 }
 
 float get_gyro_angle() {
-  float GyroZ, yaw;
+  float GyroZ;
   
   previousTime = currentTime;
   currentTime = millis();
@@ -210,10 +209,8 @@ float get_gyro_angle() {
   Wire.endTransmission(false);
   Wire.requestFrom(MPU, 2, true);
   GyroZ = (Wire.read() << 8 | Wire.read()) / 131.0;
-  GyroZ = GyroZ + GyroErrorZ;
+  GyroZ = GyroZ - GyroErrorZ;
   yaw = yaw + GyroZ * elapsedTime;
-  
-  return yaw;
 }
 
 float calculate_IMU_error() {
