@@ -1,6 +1,7 @@
 #include <SoftwareSerial.h>
 #include <Wire.h>
 #include <IRremote.h>
+#include <Servo.h>
 
 #define mA_dir 12 //motor A direction pin
 #define mA_speed 3 //motor A PWM (speed) pin
@@ -24,7 +25,7 @@
 float GyroErrorZ;
 float elapsedTime, currentTime, previousTime;
 
-SoftwareSerial esp32(esp32_tx, esp32_rx);
+SoftwareSerial esp32(esp32_rx, esp32_tx);
 IRrecv remote(ir);
 Servo servo;
 
@@ -32,32 +33,36 @@ decode_results results;
 int servo_pos = 0;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
+  while (!Serial) {
+    
+  }
+  
   Serial.println("Initialising...");
   
-  pinMode(mA_dir, OUTPUT);
-  pinMode(mA_brake, OUTPUT);
-  pinMode(mB_dir, OUTPUT);
-  pinMode(mB_brake, OUTPUT);
+  //pinMode(mA_dir, OUTPUT);
+  //pinMode(mA_brake, OUTPUT);
+  //pinMode(mB_dir, OUTPUT);
+  //pinMode(mB_brake, OUTPUT);
 
-  esp32.begin(115200);
+  esp32.begin(9600);
 
-  Wire.begin();
+  //Wire.begin();
 
-  Wire.beginTransmission(MPU);
-  Wire.write(0x6B);
-  Wire.write(0x00);
-  Wire.endTransmission(true);
+  //Wire.beginTransmission(MPU);
+  //Wire.write(0x6B);
+  //Wire.write(0x00);
+  //Wire.endTransmission(true);
 
-  GyroErrorZ = calculate_IMU_error();
+  //GyroErrorZ = calculate_IMU_error();
 
-  remote.enableIRIn();
+  //remote.enableIRIn();
 
   pinMode(trig, OUTPUT);
   pinMode(echo, INPUT);
 
-  servo.attach(servo_pin);
-  servo.write(servo_pos);
+  //servo.attach(servo_pin);
+  //servo.write(servo_pos);
 
   long ultra_duration;
   int ultra_distance;
@@ -75,35 +80,37 @@ void loop() {
   stop();
   delay(1500);
 
+  */
+  Serial.println("sending");
   esp32.print("S");
   bool x = true;
   char c = 10;
-  while (x) {
-    while (esp32.available() && x) {
-      if (char(esp32.read()) == '.') {
+  while (true) {
+    if (esp32.available()) {
+      char g = char(esp32.read());
+      if (g == '.') {
         c--;
-        if (c == 0) {x = false;}
-      } else {
-        while (!esp32.available());
-        if (char(esp32.read()) == 'F') {
-          x = false;
-          c = 0;
+        if (c == 0) {Serial.println("Wifi connection failed");c=10;}
+      } else if (g == 'C') {
+        while (x) {
+          if (esp32.available()) {
+            char d = char(esp32.read());
+            if (d == 'F') {
+              x = false;
+            } else if (d == 'S') {
+              int j = 1;
+              while (true) {
+                esp32.print("Message ");
+                esp32.println(j++);
+                delay(5000);
+              }
+            }
+          }
         }
       }
     }
   }
-  if (c > 0) {
-    int j = 1;
-    while (true) {
-      esp32.print("Message ");
-      esp32.println(j++);
-      delay(5000);
-    }
-  } else {
-    Serial.println("Error connecting");
-  }
-
-  Serial.println(get_gyro_angle());
+  /*Serial.println(get_gyro_angle());
   delay(1000);
 
   if (remote.decode(&results)) {     
