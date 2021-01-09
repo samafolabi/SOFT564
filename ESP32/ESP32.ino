@@ -57,59 +57,63 @@ void loop() {
   }
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (!subscribers[i].client->connected()) {
-      subscribers[i].client->stop();
-      delete subscribers[i].client;
-      subscribers[i].client = NULL;
-      subscribers[i].client = new WiFiClient(c);
-      subscribers[i].subscribed = false;
-      subscribers[i].directions = false;
-      subscribers[i].rotation = false;
-      subscribers[i].ultrasonic = false;
-      subscribers[i].servo = false;
-      Serial.println("deleted client");
-    } else if (subscribers[i].client != NULL && subscribers[i].client->available()) {
-      String line = "";
-      while (subscribers[i].client->connected()) {
-        char h = subscribers[i].client->read();
-        line += h;
-        if (line.length() == 3) {
-          if (subscribers[i].subscribed) {
-            Serial.println(line);
-            if (line == "FWD" || line == "BWD" || line == "LFT" || line == "RGT" || line == "STP") {
-              notify('D', line);
-            } else if (line == "ROL" || line == "ROR") {
-              notify('R', line);
-            } else if (line == "ULT") {
-              notify('U', line);
-            } else if (line == "SRV") {
-              notify('S', line);
-            }
-          } else {
-            if (line == "SUB") {
-              Serial.println("new subscription");
-              subscribers[i].subscribed = true;
-              char k = subscribers[i].client->read();
-              while (k != '_') {
-                switch (k) {
-                  case 'D':
-                    subscribers[i].directions = true;
-                    break;
-                  case 'R':
-                    subscribers[i].rotation = true;
-                    break;
-                  case 'U':
-                    subscribers[i].ultrasonic = true;
-                    break;
-                  case 'S':
-                    subscribers[i].servo = true;
-                    break;
-                }
+    if (subscribers[i].client != NULL) {
+      if (!subscribers[i].client->connected()) {
+        subscribers[i].client->stop();
+        delete subscribers[i].client;
+        subscribers[i].client = NULL;
+        subscribers[i].subscribed = false;
+        subscribers[i].directions = false;
+        subscribers[i].rotation = false;
+        subscribers[i].ultrasonic = false;
+        subscribers[i].servo = false;
+        Serial.println("deleted client");
+      } else if (subscribers[i].client->available()) {
+        String line = "";
+        while (subscribers[i].client->connected()) {
+          char h = subscribers[i].client->read();
+          line += h;
+          if (line.length() == 3) {
+            if (subscribers[i].subscribed) {
+              Serial.println(line);
+              if (line == "FWD" || line == "BWD" || line == "LFT" || line == "RGT" || line == "STP") {
+                notify('D', line);
+              } else if (line == "ROL" || line == "ROR") {
+                notify('R', line);
+              } else if (line == "ULT") {
+                notify('U', line);
+              } else if (line == "SRV") {
+                notify('S', line);
               }
-              subscribers[i].client->println("Subscribed_");
+            } else {
+              if (line == "SUB") {
+                Serial.println("new subscription");
+                subscribers[i].subscribed = true;
+                char k = subscribers[i].client->read();
+                Serial.println(k);
+                while (k != '_') {
+                  switch (k) {
+                    case 'D':
+                      subscribers[i].directions = true;
+                      break;
+                    case 'R':
+                      subscribers[i].rotation = true;
+                      break;
+                    case 'U':
+                      subscribers[i].ultrasonic = true;
+                      break;
+                    case 'S':
+                      subscribers[i].servo = true;
+                      break;
+                  }
+                  k = subscribers[i].client->read();
+                  Serial.println(k);
+                }
+                subscribers[i].client->println("Subscribed_");
+              }
             }
+            break;
           }
-          break;
         }
       }
     }

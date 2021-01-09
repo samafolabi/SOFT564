@@ -1,12 +1,12 @@
 import socket
- 
+
 while True:
 	with socket.socket() as s:
 		s.connect(('192.168.43.21', 9000 ))
 		print("Connected")
 
 		while True:
-			com = input("")
+			com = input("Waiting for input: ")
 			s.sendall(com.encode())
 			data = ""
 			while True:
@@ -20,3 +20,4 @@ while True:
 						break
 
 		print("Closing connection")
+
