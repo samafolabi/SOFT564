@@ -24,6 +24,8 @@ IPAddress subnet(255, 255, 0, 0);
 
 Subscriber subscribers[MAX_CLIENTS];
 
+bool x1 = false, x2 = false;
+
 void setup() {
   Serial.begin(9600);
   pinMode(2, OUTPUT);
@@ -41,7 +43,32 @@ void setup() {
 
 void loop() {
   WiFiClient c = s.available();
-  if (c) {
+  bool y = true;
+  while (c.connected()) {
+    if (y) {y=false;Serial.println("start");}
+    char x = char(c.read());
+    Serial.print(x);
+    if (x1 && x2 && x=='_') {
+      c.println("HTTP/1.1 200 OK");
+      c.println("Content-type:text/html");
+      c.println("Access-Control-Allow-Origin: *");
+      c.println("Connection: close");
+      c.println();
+      Serial.println("shold stop");
+      x1 = false;
+      x2 = false;
+      c.stop();
+      break;
+    } else if (x1 && x=='S') {
+      x2 = true;
+    } else if (x=='_') {
+      x1 = true;
+    } else {
+      x1 = false;
+      x2 = false;
+    }
+  }
+  /*if (c) {
     Serial.println("New Client");
     for (int i = 0; i < MAX_CLIENTS; i++) {
       if (subscribers[i].client == NULL) {
@@ -148,5 +175,5 @@ void notify(char d, String str) {
       }
       Serial.println("notified");
     }
-  }
+  }*/
 }
