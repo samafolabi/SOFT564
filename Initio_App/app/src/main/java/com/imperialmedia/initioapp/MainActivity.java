@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
     public void send(String msg) {
         if (subscribed) {
             messages.append(msg + '\n');
-            new Thread(new Send("_S_" + msg + "_"));
+            new Thread(new Send(msg + "_"));
         }
     }
 
