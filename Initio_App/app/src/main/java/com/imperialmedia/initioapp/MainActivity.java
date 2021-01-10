@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
     public void send(String msg) {
         if (subscribed) {
             messages.append(msg + '\n');
-            new Thread(new Send("_S_" + msg + "_S_"));
+            new Thread(new Send("_S_" + msg + "_"));
         }
     }
 
@@ -101,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        out.write("_S_SUBUS_S_");
+                        out.write("_S_SUBDR_");
                         messages.append("App: Subscribed\n");
                         subscribed = true;
                         subscribe_button.setEnabled(false);
