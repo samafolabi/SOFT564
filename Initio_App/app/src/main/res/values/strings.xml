@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Initio_App</string>
+    <string name="subscription">Subscribe</string>
+    <string name="arrow_up">Up</string>
+    <string name="arrow_down">Down</string>
+    <string name="arrow_left">Left</string>
+    <string name="arrow_right">Right</string>
+    <string name="rotate_left">Rotate Left</string>
+    <string name="rotate_right">Rotate Right</string>
+</resources>
