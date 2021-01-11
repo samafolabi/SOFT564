@@ -5,6 +5,7 @@ import androidx.appcompat.widget.Toolbar;
 
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -47,8 +48,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void send(String msg) {
         if (subscribed) {
-            messages.append(msg + '\n');
-            new Thread(new Send(msg + "_"));
+            Send t1 = new Send(msg);
+            new Thread(t1).start();
         }
     }
 
@@ -96,12 +97,13 @@ public class MainActivity extends AppCompatActivity {
         public void run() {
             try {
                 s = new Socket(IP, port);
-                out = new PrintWriter(s.getOutputStream());
+                out = new PrintWriter(s.getOutputStream(),true);
                 in = new BufferedReader(new InputStreamReader(s.getInputStream()));
+                out.print("SUBDR_");
+                out.flush();
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        out.write("_S_SUBDR_");
                         messages.append("App: Subscribed\n");
                         subscribed = true;
                         subscribe_button.setEnabled(false);
@@ -158,7 +160,8 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             try {
-                out.write(message);
+                Log.e("Initio", "outed");
+                out.println(message);
                 out.flush();
                 runOnUiThread(new Runnable() {
                     @Override

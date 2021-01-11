@@ -7,6 +7,24 @@ while True:
 		s.connect(('192.168.43.21', 9000 ))
 		print("Connected")
 		while True:
+			list = [sys.stdin, s]
+			r, w, e = select.select(list, [], [])
+
+			for k in r:
+				if k == s:
+					data = k.recv(128)
+					if not data:
+						print('Closing connection')
+						break
+					else:
+						print("New message: " + str(data))
+				else:
+					com = input("")
+					s.sendall(com.encode())
+
+		s.close()
+		"""
+		while True:
 			com = input("Waiting for input: ")
 			s.sendall(com.encode())
 			data = ""
@@ -22,22 +40,6 @@ while True:
 
 		print("Closing connection")
 		"""
-		while True:
-			list = [sys.stdin, s]
-			r, w, e = select.select(list, [], [])
-
-			for k in r:
-				if k == s:
-					data = k.recv(128)
-					if not data:
-						print('Closing connection')
-						break
-					else:
-						print("New message: " + str(data))
-				else:
-					com = input("Waiting for input: ")
-					s.sendall(msg.encode())
-
-		s.close()
-		"""
+		
+		
 		

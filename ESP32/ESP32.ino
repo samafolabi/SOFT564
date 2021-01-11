@@ -35,8 +35,8 @@ bool x1 = false, x2 = false;
 
 void notify(char d, String str) {
   str += '_';
-  bool sen = false;
   for (int i = 0; i < MAX_CLIENTS; i++) {
+    bool sen = false;
     if (subscribers[i].set) {
       Serial.println("swt");
       switch (d) {
@@ -161,7 +161,7 @@ void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
                 k++;
                 Serial.println(data.charAt(k));
               }
-              ws.sendTXT(id, "Subscribed_");
+              ws.sendTXT(id, "Subscribed");
             }
           }
         }
@@ -269,7 +269,7 @@ void loop() {
                   k = subscribers[i].client->read();
                   Serial.println(k);
                 }
-                subscribers[i].client->println("Subscribed_");
+                subscribers[i].client->println("Subscribed");
               }
             }
             break;
