@@ -53,10 +53,10 @@ void setup() {
   
   Serial.println("Initialising...");
   
-//  pinMode(mA_dir, OUTPUT);
-//  pinMode(mA_brake, OUTPUT);
-//  pinMode(mB_dir, OUTPUT);
-//  pinMode(mB_brake, OUTPUT);
+  pinMode(mA_dir, OUTPUT);
+  pinMode(mA_brake, OUTPUT);
+  pinMode(mB_dir, OUTPUT);
+  pinMode(mB_brake, OUTPUT);
 
   esp32.begin(9600);
 
@@ -75,21 +75,16 @@ void setup() {
   pinMode(trig, OUTPUT);
   pinMode(echo, INPUT);
   
-  //servo.attach(servo_pin);
-  //servo.write(servo_pos);
+  servo.attach(servo_pin);
+  servo.write(servo_pos);
 
   Serial.println("Initialised");
 }
 
 void loop() {
-  /*forward();
-  delay(3000);
-  stop();
-  delay(1500);
-  rotate_l();
-  delay(3000);
-  stop();
-  delay(1500);*/
+
+
+  
   delay(1000);
   Serial.println("sending");
   esp32.print("S");
@@ -107,23 +102,21 @@ void loop() {
 
 
           if (xx[0] == 'F' && xx[1] == 'W' && xx[2] == 'D') {
-            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+            forward();
           } else if (xx[0] == 'B' && xx[1] == 'W' && xx[2] == 'D') {
-            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+            backward();
           } else if (xx[0] == 'L' && xx[1] == 'F' && xx[2] == 'T') {
-            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+            rotate_l();
           } else if (xx[0] == 'R' && xx[1] == 'G' && xx[2] == 'T') {
-            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+            rotate_r();
           } else if (xx[0] == 'S' && xx[1] == 'T' && xx[2] == 'P') {
-            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+            stop_m();
           } else if (xx[0] == 'R' && xx[1] == 'O' && xx[2] == 'L') {
             Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
           } else if (xx[0] == 'R' && xx[1] == 'O' && xx[2] == 'R') {
             Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
           } else if (xx[0] == 'U' && xx[1] == 'L' && xx[2] == 'T') {
-            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
             int us = ultrasonic();
-            Serial.println(us);
             esp32.print(us);
             esp32.print('_');
           } else if (xx[0] == 'S' && xx[1] == 'R' && xx[2] == 'V') {
@@ -160,23 +153,23 @@ void loop() {
       delay(200);
       if (results.value == remote_value) {
         remote_value = 0;
-        Serial.println("STP");
+        stop_m();
       } else {
         switch (results.value) {
           case 16718055:
-            Serial.println("FWD");
+            forward();
             remote_value = results.value;
             break;
           case 16730805:
-            Serial.println("BWD");
+            backward();
             remote_value = results.value;
             break;
           case 16716015:
-            Serial.println("LFT");
+            rotate_l();
             remote_value = results.value;
             break;
           case 16734885:
-            Serial.println("RGT");
+            rotate_r();
             remote_value = results.value;
             break;
         }
@@ -187,53 +180,10 @@ void loop() {
 
   }
 
-  /*
-  get_gyro_angle();
-  Serial.println(yaw);
-  delay(1000);
-
-  if (remote.decode(&results)) {
-    remote.resume();
-    delay(200);
-    if (results.value == remote_value) {
-      remote_value = 0;
-      Serial.println("STP");
-    } else {
-      switch (results.value) {
-        case 16718055:
-          Serial.println("FWD");
-          remote_value = results.value;
-          break;
-        case 16730805:
-          Serial.println("BWD");
-          remote_value = results.value;
-          break;
-        case 16716015:
-          Serial.println("LFT");
-          remote_value = results.value;
-          break;
-        case 16734885:
-          Serial.println("RGT");
-          remote_value = results.value;
-          break;
-      }
-    }
-    //Serial.print("Code: ");
-    //Serial.println(results.value);
-  }
-
-  for(servo_pos = 0; servo_pos < 180; servo_pos += 10) {
-    set_servo_pos(servo_pos);
-    delay(15);
-  }
-  
-  for(servo_pos = 180; servo_pos >= 1; servo_pos -= 10) {
-    set_servo_pos(servo_pos);
-    delay(15);
-  }
+ 
   
   
-  */
+ 
 }
 
 void forward() {
@@ -284,13 +234,19 @@ void stop_m() {
 void rotation(float angle, bool clockwise) {
   float yaw;
   if (clockwise) {
+    rotate_r();
     while (yaw <= angle) {
+      delay(100);
       yaw = get_gyro_angle();
     }
+    stop_m();
   } else {
+    rotate_l();
     while (yaw >= angle) {
+      delay(100);
       yaw = get_gyro_angle();
     }
+    stop_m();
   }
 }
 
