@@ -34,11 +34,9 @@ Subscriber subscribers[MAX_CLIENTS];
 bool x1 = false, x2 = false;
 
 void notify(char d, String str) {
-  str += '_';
   for (int i = 0; i < MAX_CLIENTS; i++) {
     bool sen = false;
     if (subscribers[i].set) {
-      Serial.println("swt");
       switch (d) {
         case 'D':
           if (subscribers[i].directions) {
@@ -53,7 +51,6 @@ void notify(char d, String str) {
         case 'U':
           if (subscribers[i].ultrasonic) {
             sen = true;
-            Serial.println("ssafgd");
           }
           break;
         case 'S':
@@ -63,12 +60,9 @@ void notify(char d, String str) {
           break;
       }
       if (sen) {
-        Serial.println("sen");
         if (subscribers[i].ws_sock) {
-          Serial.println("sock yes");
           ws.sendTXT(subscribers[i].id, str);
         } else {
-          Serial.println("sock no");
           subscribers[i].client->println(str);
         }
       }
@@ -82,10 +76,8 @@ String converter(uint8_t *str){
 
 void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
   String data = converter(dat);
-  Serial.println("Event o");
   switch(type) {
     case WStype_DISCONNECTED:
-      Serial.println("deleted client");
       for (int i = 0; i < MAX_CLIENTS; i++) {
         if (subscribers[i].set) {
           subscribers[i].set = false;
@@ -95,7 +87,6 @@ void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
       }
       break;
     case WStype_CONNECTED:
-      Serial.println("New Client");
       for (int i = 0; i < MAX_CLIENTS; i++) {
         if (!subscribers[i].set) {
           subscribers[i].set = true;
@@ -114,52 +105,47 @@ void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
       for (int i = 0; i < MAX_CLIENTS; i++) {
         if (subscribers[i].ws_sock) {
           if (subscribers[i].subscribed) {
-            Serial.println(data);
             String dd = data.substring(0,3);
             if (dd == "FWD" || dd == "BWD" ||
               dd == "LFT" || dd == "RGT" || dd == "STP") {
               notify('D', dd);
+              Serial2.print('_');
+              Serial2.print(dd);
             } else if (dd == "ROL" || dd == "ROR") {
+              Serial2.print('_');
+              Serial2.print(dd);
               notify('R', dd);
             } else if (dd == "ULT") {
-              Serial.println("ddadaf");
+              Serial2.print('_');
               notify('U', dd);
+              Serial2.print(dd);
             } else if (data.charAt(0) == 'S' &&
               data.charAt(1) == 'R' && data.charAt(2) == 'V') {
+              Serial2.print('_');
               notify('S', data);
+              Serial2.print(data);
             }
           } else {
             if (data.charAt(0) == 'S' &&
               data.charAt(1) == 'U' && data.charAt(2) == 'B') {
-              Serial.println("new subscription");
               subscribers[i].subscribed = true;
               char k = 3;
-              Serial.println(data.charAt(k));
               while (data.charAt(k) != '_') {
                 switch (data.charAt(k)) {
                   case 'D':
-                    Serial.print("Set up: ");
-                    Serial.println(data.charAt(k));
                     subscribers[i].directions = true;
                     break;
                   case 'R':
-                    Serial.print("Set up: ");
-                    Serial.println(data.charAt(k));
                     subscribers[i].rotation = true;
                     break;
                   case 'U':
-                    Serial.print("Set up: ");
-                    Serial.println(data.charAt(k));
                     subscribers[i].ultrasonic = true;
                     break;
                   case 'S':
-                    Serial.print("Set up: ");
-                    Serial.println(data.charAt(k));
                     subscribers[i].servo = true;
                     break;
                 }
                 k++;
-                Serial.println(data.charAt(k));
               }
               ws.sendTXT(id, "Subscribed");
             }
@@ -168,23 +154,19 @@ void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
       }
       break;
     default:
-      Serial.println("default");
       break;
   }
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial2.begin(9600, SERIAL_8N1, RX, TX);
   pinMode(2, OUTPUT);
 
   WiFi.config(IP, gateway, subnet);
   WiFi.begin(ssid, pass);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
-    Serial.println(".");
   }
-  Serial.print("WiFi connected with IP at ");
-  Serial.println(WiFi.localIP());
   s.begin();
 
   ws.begin();
@@ -192,90 +174,112 @@ void setup() {
 }
 
 void loop() {
-  ws.loop();
-  
-  WiFiClient c = s.available();
-
-  
-  if (c) {
-    Serial.println("New Client");
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      if (!subscribers[i].set) {
-          subscribers[i].set = true;
-          subscribers[i].ws_sock = false;
-          subscribers[i].client = new WiFiClient(c);
-          subscribers[i].subscribed = false;
-          subscribers[i].directions = false;
-          subscribers[i].rotation = false;
-          subscribers[i].ultrasonic = false;
-          subscribers[i].servo = false;
-          break;
-      }
-    }
+  while (!Serial2.available()) {
+    digitalWrite(2, HIGH);
+    delay(1000);
+    digitalWrite(2, LOW);
+    delay(1000);
   }
+  if (char(Serial2.read()) == 'S') {
+    while (true) {
 
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (subscribers[i].set && !subscribers[i].ws_sock) {
-      if (!subscribers[i].client->connected()) {
-        subscribers[i].client->stop();
-        delete subscribers[i].client;
-        subscribers[i].client = NULL;
-        subscribers[i].set = false;
-        subscribers[i].subscribed = false;
-        subscribers[i].directions = false;
-        subscribers[i].rotation = false;
-        subscribers[i].ultrasonic = false;
-        subscribers[i].servo = false;
-        Serial.println("deleted client");
-      } else if (subscribers[i].client->available()) {
-        String line = "";
-        while (subscribers[i].client->connected()) {
-          char h = subscribers[i].client->read();
-          line += h;
-          if (line.length() == 3) {
-            if (subscribers[i].subscribed) {
-              Serial.println(line);
-              //check if they're registed for the action
-              if (line == "FWD" || line == "BWD" || line == "LFT" || line == "RGT" || line == "STP") {
-                notify('D', line);
-              } else if (line == "ROL" || line == "ROR") {
-                notify('R', line);
-              } else if (line == "ULT") {
-                notify('U', line);
-              } else if (line == "SRV") {
-                notify('S', line);
-              }
-            } else {
-              if (line == "SUB") {
-                Serial.println("new subscription");
-                subscribers[i].subscribed = true;
-                char k = subscribers[i].client->read();
-                Serial.println(k);
-                while (k != '_') {
-                  switch (k) {
-                    case 'D':
-                      subscribers[i].directions = true;
-                      break;
-                    case 'R':
-                      subscribers[i].rotation = true;
-                      break;
-                    case 'U':
-                      subscribers[i].ultrasonic = true;
-                      break;
-                    case 'S':
-                      subscribers[i].servo = true;
-                      break;
-                  }
-                  k = subscribers[i].client->read();
-                  Serial.println(k);
-                }
-                subscribers[i].client->println("Subscribed");
-              }
-            }
-            break;
+
+      ws.loop();
+  
+      WiFiClient c = s.available();
+    
+      
+      if (c) {
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+          if (!subscribers[i].set) {
+              subscribers[i].set = true;
+              subscribers[i].ws_sock = false;
+              subscribers[i].client = new WiFiClient(c);
+              subscribers[i].subscribed = false;
+              subscribers[i].directions = false;
+              subscribers[i].rotation = false;
+              subscribers[i].ultrasonic = false;
+              subscribers[i].servo = false;
+              break;
           }
         }
       }
+    
+      for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (subscribers[i].set && !subscribers[i].ws_sock) {
+          if (!subscribers[i].client->connected()) {
+            subscribers[i].client->stop();
+            delete subscribers[i].client;
+            subscribers[i].client = NULL;
+            subscribers[i].set = false;
+            subscribers[i].subscribed = false;
+            subscribers[i].directions = false;
+            subscribers[i].rotation = false;
+            subscribers[i].ultrasonic = false;
+            subscribers[i].servo = false;
+          } else if (subscribers[i].client->available()) {
+            String line = "";
+            while (subscribers[i].client->connected()) {
+              char h = subscribers[i].client->read();
+              line += h;
+              if (line.length() == 3) {
+                if (subscribers[i].subscribed) {
+                  //check if they're registed for the action
+                  if (line == "FWD" || line == "BWD" || line == "LFT" || line == "RGT" || line == "STP") {
+                    Serial2.print('_');
+                    notify('D', line);
+                    Serial2.print(line);
+                  } else if (line == "ROL" || line == "ROR") {
+                    Serial2.print('_');
+                    notify('R', line);
+                    Serial2.print(line);
+                  } else if (line == "ULT") {
+                    Serial2.print('_');
+                    notify('U', line);
+                    Serial2.print(line);
+                  } else if (line == "SRV") {
+                    Serial2.print('_');
+                    h = subscribers[i].client->read();
+                    while (h != '_') {
+                      line += h;
+                      h = subscribers[i].client->read();
+                    }
+                    notify('S', line);
+                    Serial2.print(line);
+                  }
+                } else {
+                  if (line == "SUB") {
+                    subscribers[i].subscribed = true;
+                    char k = subscribers[i].client->read();
+                    while (k != '_') {
+                      switch (k) {
+                        case 'D':
+                          subscribers[i].directions = true;
+                          break;
+                        case 'R':
+                          subscribers[i].rotation = true;
+                          break;
+                        case 'U':
+                          subscribers[i].ultrasonic = true;
+                          break;
+                        case 'S':
+                          subscribers[i].servo = true;
+                          break;
+                      }
+                      k = subscribers[i].client->read();
+                    }
+                    subscribers[i].client->println("Subscribed");
+                  }
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      
     }
   }
+  
 }

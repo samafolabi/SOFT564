@@ -35,6 +35,18 @@ unsigned long remote_value = 0;
 long ultra_duration;
 int ultra_distance;
 
+int con_str_int(char c1, char c2, char c3, char i) {
+  int a = 0;
+  if (i == 3) {
+    a = ((c1 - '0')*100) + ((c2 - '0')*10) + (c3 - '0');
+  } else if (i == 2) {
+    a = ((c1 - '0')*10) + (c2 - '0');
+  } else if (i == 1) {
+    a = (c1 - '0');
+  }
+  return a;
+}
+
 void setup() {
   Serial.begin(9600);
   while (!Serial) {
@@ -48,25 +60,25 @@ void setup() {
 //  pinMode(mB_dir, OUTPUT);
 //  pinMode(mB_brake, OUTPUT);
 
-//  esp32.begin(9600);
+  esp32.begin(9600);
 
-//  Wire.begin();
-//  Wire.beginTransmission(MPU);
-//  Wire.write(0x6B);
-//  Wire.write(0x00);
-//  Wire.endTransmission(true);
-//  calculate_IMU_error();
-//  Serial.print("IMU Error: ");
-//  Serial.println(GyroErrorZ);
+  Wire.begin();
+  Wire.beginTransmission(MPU);
+  Wire.write(0x6B);
+  Wire.write(0x00);
+  Wire.endTransmission(true);
+  calculate_IMU_error();
+  Serial.print("IMU Error: ");
+  Serial.println(GyroErrorZ);
 
-//  remote.enableIRIn();
-//  remote.blink13(true);
+  remote.enableIRIn();
+  remote.blink13(true);
 
   pinMode(trig, OUTPUT);
   pinMode(echo, INPUT);
   
-//  servo.attach(servo_pin);
-//  servo.write(servo_pos);
+  //servo.attach(servo_pin);
+  //servo.write(servo_pos);
 
   Serial.println("Initialised");
 }
@@ -79,37 +91,72 @@ void loop() {
   rotate_l();
   delay(3000);
   stop();
-  delay(1500);
-
+  delay(1500);*/
+  delay(1000);
   Serial.println("sending");
   esp32.print("S");
   bool x = true;
   char c = 10;
+  char xx[3];
+  char xxn = 0;
+  bool xxb = false;
   while (true) {
     if (esp32.available()) {
-      char g = char(esp32.read());
-      if (g == '.') {
-        c--;
-        if (c == 0) {Serial.println("Wifi connection failed");c=10;}
-      } else if (g == 'C') {
-        while (x) {
-          if (esp32.available()) {
-            char d = char(esp32.read());
-            if (d == 'F') {
-              x = false;
-            } else if (d == 'S') {
-              int j = 1;
-              while (true) {
-                esp32.print("Message ");
-                esp32.println(j++);
-                delay(5000);
+      if (!xxb && char(esp32.read()) == '_') {xxb=true;continue;}
+      if (xxb) {
+        xx[xxn++]=char(esp32.read());
+        if (xxn == 3) {
+
+
+          if (xx[0] == 'F' && xx[1] == 'W' && xx[2] == 'D') {
+            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+          } else if (xx[0] == 'B' && xx[1] == 'W' && xx[2] == 'D') {
+            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+          } else if (xx[0] == 'L' && xx[1] == 'F' && xx[2] == 'T') {
+            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+          } else if (xx[0] == 'R' && xx[1] == 'G' && xx[2] == 'T') {
+            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+          } else if (xx[0] == 'S' && xx[1] == 'T' && xx[2] == 'P') {
+            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+          } else if (xx[0] == 'R' && xx[1] == 'O' && xx[2] == 'L') {
+            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+          } else if (xx[0] == 'R' && xx[1] == 'O' && xx[2] == 'R') {
+            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+          } else if (xx[0] == 'U' && xx[1] == 'L' && xx[2] == 'T') {
+            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+          } else if (xx[0] == 'S' && xx[1] == 'R' && xx[2] == 'V') {
+            char y[] = {0,0,0};
+            char i = 0;
+            while (true) {
+              if (esp32.available()) {
+                char z=char(esp32.read());
+                if (z != '_') {
+                  y[i] = z;
+                  i++;
+                } else {
+                  int t = con_str_int(y[0], y[1], y[2], i);
+                  Serial.println(t);
+                  break;
+                }
               }
             }
           }
+
+          
+          xxn = 0;
+          xx[0] = 0;
+          xx[1] = 0;
+          xx[2] = 0;
+          xxb = false;
         }
       }
+      
+      
+        
     }
   }
+
+  /*
   get_gyro_angle();
   Serial.println(yaw);
   delay(1000);
