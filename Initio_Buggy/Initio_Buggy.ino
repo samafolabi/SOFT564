@@ -32,8 +32,6 @@ Servo servo;
 decode_results results;
 int servo_pos = 0;
 unsigned long remote_value = 0;
-long ultra_duration;
-int ultra_distance;
 
 int con_str_int(char c1, char c2, char c3, char i) {
   int a = 0;
@@ -124,6 +122,10 @@ void loop() {
             Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
           } else if (xx[0] == 'U' && xx[1] == 'L' && xx[2] == 'T') {
             Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+            int us = ultrasonic();
+            Serial.println(us);
+            esp32.print(us);
+            esp32.print('_');
           } else if (xx[0] == 'S' && xx[1] == 'R' && xx[2] == 'V') {
             char y[] = {0,0,0};
             char i = 0;
@@ -153,7 +155,36 @@ void loop() {
       
       
         
+    } else if (remote.decode(&results)) {
+      remote.resume();
+      delay(200);
+      if (results.value == remote_value) {
+        remote_value = 0;
+        Serial.println("STP");
+      } else {
+        switch (results.value) {
+          case 16718055:
+            Serial.println("FWD");
+            remote_value = results.value;
+            break;
+          case 16730805:
+            Serial.println("BWD");
+            remote_value = results.value;
+            break;
+          case 16716015:
+            Serial.println("LFT");
+            remote_value = results.value;
+            break;
+          case 16734885:
+            Serial.println("RGT");
+            remote_value = results.value;
+            break;
+        }
+      }
+      //Serial.print("Code: ");
+      //Serial.println(results.value);
     }
+
   }
 
   /*
@@ -200,18 +231,9 @@ void loop() {
     set_servo_pos(servo_pos);
     delay(15);
   }
-
-  digitalWrite(trig, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trig, LOW);
-  ultra_duration = pulseIn(echo, HIGH);
-  ultra_distance = ultra_duration * 0.034 / 2;
-  Serial.print("Distance: ");
-  Serial.print(ultra_distance);
-  Serial.println(" cm");
-  delay(1000);*/
+  
+  
+  */
 }
 
 void forward() {
@@ -312,4 +334,17 @@ void set_servo_pos(int pos) {
   }
 
   servo.write(pos);
+}
+
+int ultrasonic() {
+  long ultra_duration;
+  int ultra_distance;
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig, LOW);
+  ultra_duration = pulseIn(echo, HIGH);
+  ultra_distance = ultra_duration * 0.034 / 2;
+  return ultra_distance;
 }

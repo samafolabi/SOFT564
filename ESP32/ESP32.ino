@@ -117,8 +117,20 @@ void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
               notify('R', dd);
             } else if (dd == "ULT") {
               Serial2.print('_');
-              notify('U', dd);
               Serial2.print(dd);
+              String us = "_";
+              while (true) {
+                if (Serial2.available()) {
+                  char u = char(Serial2.read());
+                  if (u == '_') {
+                    dd += us;
+                    notify('U', dd);
+                    break;
+                  } else {
+                    us += u;
+                  }
+                }
+              }
             } else if (data.charAt(0) == 'S' &&
               data.charAt(1) == 'R' && data.charAt(2) == 'V') {
               Serial2.print('_');
@@ -235,8 +247,20 @@ void loop() {
                     Serial2.print(line);
                   } else if (line == "ULT") {
                     Serial2.print('_');
-                    notify('U', line);
                     Serial2.print(line);
+                    String us = "_";
+                    while (true) {
+                      if (Serial2.available()) {
+                        char u = char(Serial2.read());
+                        if (u == '_') {
+                          line += us;
+                          notify('U', line);
+                          break;
+                        } else {
+                          us += u;
+                        }
+                      }
+                    }
                   } else if (line == "SRV") {
                     Serial2.print('_');
                     h = subscribers[i].client->read();
