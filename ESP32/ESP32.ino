@@ -2,48 +2,55 @@
 #include <WebSocketsServer.h>
 #include <IRremote.h>
 
+//Arduino Serial pins
 #define RX 16
 #define TX 17
-#define MAX_CLIENTS 5
-#define ir 15
 
+#define MAX_CLIENTS 5
+#define ir 15 //IR receiver
+
+//WiFi and Server details
 const char* ssid = "test_ssid";
 const char* pass = "password";
 const int port = 9000;
 const int ws_port = 9001;
 
 typedef struct {
-  bool set;
-  WiFiClient *client;
-  bool ws_sock;
-  uint8_t id;
-  bool subscribed;
+  bool set; //initialised
+  WiFiClient *client; //client object for socket
+  bool ws_sock; //true - WebSocket, false - socket
+  uint8_t id; //client number for WebSocket
+  bool subscribed; //client subscription status
+  
+  //Component Configurations
   bool directions;
   bool rotation;
   bool ultrasonic;
   bool servo;
 } Subscriber;
 
+//Server and IPAddress Setup
 WiFiServer s(port);
 IPAddress IP(192, 168, 43, 21);
 IPAddress gateway(192, 168, 43, 1);
 IPAddress subnet(255, 255, 0, 0);
-
 WebSocketsServer ws = WebSocketsServer(ws_port);
 
 IRrecv remote(ir);
 
-Subscriber subscribers[MAX_CLIENTS];
+Subscriber subscribers[MAX_CLIENTS]; //Subscriber list
 
-bool x1 = false, x2 = false;
-
-decode_results results;
+decode_results results; //IR receiver results
 unsigned long remote_value = 0;
 
+//Notification function to send messages about
+//component changes to subscribed clients
 void notify(char d, String str) {
+  //Loop through clients to see if initialised
   for (int i = 0; i < MAX_CLIENTS; i++) {
     bool sen = false;
     if (subscribers[i].set) {
+      //Check if subscribed to particular component
       switch (d) {
         case 'D':
           if (subscribers[i].directions) {
@@ -66,6 +73,7 @@ void notify(char d, String str) {
           }
           break;
       }
+      //If subscribed, send via appropriate methods
       if (sen) {
         if (subscribers[i].ws_sock) {
           ws.sendTXT(subscribers[i].id, str);
@@ -77,14 +85,18 @@ void notify(char d, String str) {
   }
 }
 
+//Change data types due to wsEvent parameters
 String converter(uint8_t *str){
     return String((char *)str);
 }
 
+//Work with connection depending on type of event
+//From: https://shawnhymel.com/1675/arduino-websocket-server-using-an-esp32/
 void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
   String data = converter(dat);
   switch(type) {
     case WStype_DISCONNECTED:
+      //If disconnected, reset init and subscription
       for (int i = 0; i < MAX_CLIENTS; i++) {
         if (subscribers[i].set) {
           subscribers[i].set = false;
@@ -93,7 +105,10 @@ void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
         }
       }
       break;
+      
     case WStype_CONNECTED:
+      //If it is a new connection, set the id, init, socket type,
+      //subscription, and configurations
       for (int i = 0; i < MAX_CLIENTS; i++) {
         if (!subscribers[i].set) {
           subscribers[i].set = true;
@@ -108,11 +123,16 @@ void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
         }
       }
       break;
+      
     case WStype_TEXT:
+      //If there is data, decode the first three characters
+      //and perform the right action
       for (int i = 0; i < MAX_CLIENTS; i++) {
         if (subscribers[i].ws_sock) {
           if (subscribers[i].subscribed) {
+            
             String dd = data.substring(0,3);
+            
             if (dd == "FWD" || dd == "BWD" ||
               dd == "LFT" || dd == "RGT" || dd == "STP") {
               notify('D', dd);
@@ -125,6 +145,10 @@ void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
             } else if (dd == "ULT") {
               Serial2.print('_');
               Serial2.print(dd);
+              
+              //If it is an ultrasonic command, send the command
+              //to the Arduino and wait for its response to send back
+              
               String us = "_";
               while (true) {
                 if (Serial2.available()) {
@@ -147,6 +171,10 @@ void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
           } else {
             if (data.charAt(0) == 'S' &&
               data.charAt(1) == 'U' && data.charAt(2) == 'B') {
+              //If the client is not subscribed and wants to subscribe,
+              //read until end character '_' and set the corresponding
+              //configurations
+              
               subscribers[i].subscribed = true;
               char k = 3;
               while (data.charAt(k) != '_') {
@@ -178,12 +206,14 @@ void wsEvent(uint8_t id, WStype_t type, uint8_t * dat, size_t length) {
 }
 
 void setup() {
-  Serial2.begin(9600, SERIAL_8N1, RX, TX);
+  //Set pin mode of onboard LED
   pinMode(2, OUTPUT);
 
+  //Initialise IR receiver
   remote.enableIRIn();
   remote.blink13(true);
 
+  //Set static IP, connect to WiFi, then set up the WebSocket events
   WiFi.config(IP, gateway, subnet);
   WiFi.begin(ssid, pass);
   while (WiFi.status() != WL_CONNECTED) {
@@ -196,21 +226,24 @@ void setup() {
 }
 
 void loop() {
+  //If there is no data from the Arduino, blink the LED
   while (!Serial2.available()) {
     digitalWrite(2, HIGH);
     delay(1000);
     digitalWrite(2, LOW);
     delay(1000);
   }
+  
   if (char(Serial2.read()) == 'S') {
     while (true) {
-
-
-      ws.loop();
-  
-      WiFiClient c = s.available();
-    
       
+      ws.loop(); //Check for WebSocket events
+  
+      WiFiClient c = s.available(); //Check for new socket
+                                    //Connections
+    
+      //If it is a new connection, set the client, init, socket type,
+      //subscription, and configurations
       if (c) {
         for (int i = 0; i < MAX_CLIENTS; i++) {
           if (!subscribers[i].set) {
@@ -230,6 +263,8 @@ void loop() {
       for (int i = 0; i < MAX_CLIENTS; i++) {
         if (subscribers[i].set && !subscribers[i].ws_sock) {
           if (!subscribers[i].client->connected()) {
+            //If disconnected, reset init and subscription,
+            //stop the client, and delete the client object
             subscribers[i].client->stop();
             delete subscribers[i].client;
             subscribers[i].client = NULL;
@@ -242,6 +277,8 @@ void loop() {
           } else if (subscribers[i].client->available()) {
             String line = "";
             while (subscribers[i].client->connected()) {
+              //If there is data, decode the first three characters
+              //and perform the right action
               char h = subscribers[i].client->read();
               line += h;
               if (line.length() == 3) {
@@ -259,6 +296,9 @@ void loop() {
                     Serial2.print('_');
                     Serial2.print(line);
                     String us = "_";
+                    //If it is an ultrasonic command, send the command
+                    //to the Arduino and wait for its response to send back
+                    
                     while (true) {
                       if (Serial2.available()) {
                         char u = char(Serial2.read());
@@ -283,6 +323,10 @@ void loop() {
                   }
                 } else {
                   if (line == "SUB") {
+                    //If the client is not subscribed and wants to subscribe,
+                    //read until end character '_' and set the corresponding
+                    //configurations
+                    
                     subscribers[i].subscribed = true;
                     char k = subscribers[i].client->read();
                     while (k != '_') {
@@ -312,6 +356,9 @@ void loop() {
         }
       }
 
+      //If the receiver gets a new code, save it and check
+      //the value. If set previously, send the stop code.
+      //If not, send the right code
       if (remote.decode(&results)) {
         remote.resume();
         delay(200);

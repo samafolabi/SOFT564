@@ -39,19 +39,26 @@ public class MainActivity extends AppCompatActivity {
 
         subscribe_button = (Button) findViewById(R.id.subscribe);
         messages = (TextView) findViewById(R.id.messages);
+
+        //Make sure the text view scrolls
         messages.setMovementMethod(new ScrollingMovementMethod());
     }
 
     public void subscribe(View v) {
+        //Connect to the server and subscribe
         new Thread(new Connect()).start();
     }
 
     public void send(String msg) {
+        //If already subscribed to the server, send the message
+        //on a seperate thread
         if (subscribed) {
             Send t1 = new Send(msg);
             new Thread(t1).start();
         }
     }
+
+    //Direction and Rotation methods
 
     public void up(View v) {
         String dir = "FWD";
@@ -93,6 +100,11 @@ public class MainActivity extends AppCompatActivity {
         send("ROR");
     }
 
+    //From: https://www.tutorialspoint.com/sending-and-receiving-data-with-sockets-in-android
+
+    //Connect to the in and out stream of the socket
+    //If all good, subscribe to tbe server and disable button
+    //Then start the Receive message thread in the background
     class Connect implements Runnable {
         public void run() {
             try {
@@ -116,6 +128,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    //If the server has sent a message, show it in the text view
     class Receive implements Runnable {
         @Override
         public void run() {
@@ -152,6 +165,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    //If this client needs to send a message to the server,
+    //send on this thread and append to the text view
     class Send implements Runnable {
         private String message;
         Send(String message) {
