@@ -1,6 +1,5 @@
 #include <SoftwareSerial.h>
 #include <Wire.h>
-#include <IRremote.h>
 #include <Servo.h>
 
 #define mA_dir 12 //motor A direction pin
@@ -11,11 +10,10 @@
 #define mB_speed 11 //motor B PWM (speed) pin
 #define mB_brake 8 //motor B brake pin
 #define mB_sense A1 //motor B current sensing pin
-#define m_speed 123
+#define m_speed 255
 
 #define esp32_tx 2
 #define esp32_rx 4
-#define ir 5
 #define servo_pin 10
 #define trig 6
 #define echo 7
@@ -26,12 +24,15 @@ float GyroErrorZ = 0, yaw = 0;
 float elapsedTime, currentTime = 0, previousTime;
 
 SoftwareSerial esp32(esp32_rx, esp32_tx);
-IRrecv remote(ir);
 Servo servo;
 
-decode_results results;
-int servo_pos = 0;
-unsigned long remote_value = 0;
+int servo_pos = 90;
+
+int rev_angle_map(int angle) {
+  angle = angle - 90;
+  angle = angle * -1;
+  return angle;
+}
 
 int con_str_int(char c1, char c2, char c3, char i) {
   int a = 0;
@@ -46,17 +47,14 @@ int con_str_int(char c1, char c2, char c3, char i) {
 }
 
 void setup() {
-  Serial.begin(9600);
-  while (!Serial) {
-    
-  }
-  
-  Serial.println("Initialising...");
-  
   pinMode(mA_dir, OUTPUT);
   pinMode(mA_brake, OUTPUT);
+  pinMode(mA_speed, OUTPUT);
+  pinMode(mB_speed, OUTPUT);
   pinMode(mB_dir, OUTPUT);
   pinMode(mB_brake, OUTPUT);
+  digitalWrite(mA_brake, LOW);
+  digitalWrite(mB_brake, LOW);
 
   esp32.begin(9600);
 
@@ -66,19 +64,12 @@ void setup() {
   Wire.write(0x00);
   Wire.endTransmission(true);
   calculate_IMU_error();
-  Serial.print("IMU Error: ");
-  Serial.println(GyroErrorZ);
-
-  remote.enableIRIn();
-  remote.blink13(true);
 
   pinMode(trig, OUTPUT);
   pinMode(echo, INPUT);
   
   servo.attach(servo_pin);
   servo.write(servo_pos);
-
-  Serial.println("Initialised");
 }
 
 void loop() {
@@ -86,7 +77,6 @@ void loop() {
 
   
   delay(1000);
-  Serial.println("sending");
   esp32.print("S");
   bool x = true;
   char c = 10;
@@ -112,9 +102,9 @@ void loop() {
           } else if (xx[0] == 'S' && xx[1] == 'T' && xx[2] == 'P') {
             stop_m();
           } else if (xx[0] == 'R' && xx[1] == 'O' && xx[2] == 'L') {
-            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+            rotation(float(rev_angle_map(0)), false);
           } else if (xx[0] == 'R' && xx[1] == 'O' && xx[2] == 'R') {
-            Serial.print(xx[0]);Serial.print(xx[1]);Serial.println(xx[2]);
+            rotation(float(rev_angle_map(180)), true);
           } else if (xx[0] == 'U' && xx[1] == 'L' && xx[2] == 'T') {
             int us = ultrasonic();
             esp32.print(us);
@@ -130,7 +120,6 @@ void loop() {
                   i++;
                 } else {
                   int t = con_str_int(y[0], y[1], y[2], i);
-                  Serial.println(t);
                   break;
                 }
               }
@@ -148,34 +137,6 @@ void loop() {
       
       
         
-    } else if (remote.decode(&results)) {
-      remote.resume();
-      delay(200);
-      if (results.value == remote_value) {
-        remote_value = 0;
-        stop_m();
-      } else {
-        switch (results.value) {
-          case 16718055:
-            forward();
-            remote_value = results.value;
-            break;
-          case 16730805:
-            backward();
-            remote_value = results.value;
-            break;
-          case 16716015:
-            rotate_l();
-            remote_value = results.value;
-            break;
-          case 16734885:
-            rotate_r();
-            remote_value = results.value;
-            break;
-        }
-      }
-      //Serial.print("Code: ");
-      //Serial.println(results.value);
     }
 
   }
@@ -189,65 +150,60 @@ void loop() {
 void forward() {
   stop_m();
   digitalWrite(mA_dir, HIGH);
-  digitalWrite(mB_dir, LOW);
-  digitalWrite(mA_brake, LOW);
-  digitalWrite(mB_brake, LOW);
-  digitalWrite(mA_speed, m_speed);
-  digitalWrite(mB_speed, m_speed);
+  digitalWrite(mB_dir, HIGH);
+  analogWrite(mA_speed, m_speed);
+  analogWrite(mB_speed, m_speed);
 }
 
 void backward() {
   stop_m();
   digitalWrite(mA_dir, LOW);
-  digitalWrite(mB_dir, HIGH);
-  digitalWrite(mA_brake, LOW);
-  digitalWrite(mB_brake, LOW);
-  digitalWrite(mA_speed, m_speed);
-  digitalWrite(mB_speed, m_speed);
+  digitalWrite(mB_dir, LOW);
+  analogWrite(mA_speed, m_speed);
+  analogWrite(mB_speed, m_speed);
 }
 
 void rotate_l() {
   stop_m();
-  digitalWrite(mA_dir, LOW);
+  digitalWrite(mA_dir, HIGH);
   digitalWrite(mB_dir, LOW);
-  digitalWrite(mA_brake, LOW);
-  digitalWrite(mB_brake, LOW);
-  digitalWrite(mA_speed, m_speed);
-  digitalWrite(mB_speed, m_speed);
+  analogWrite(mA_speed, m_speed);
+  analogWrite(mB_speed, m_speed);
 }
 
 void rotate_r() {
   stop_m();
-  digitalWrite(mA_dir, HIGH);
+  digitalWrite(mA_dir, LOW);
   digitalWrite(mB_dir, HIGH);
-  digitalWrite(mA_brake, LOW);
-  digitalWrite(mB_brake, LOW);
-  digitalWrite(mA_speed, m_speed);
-  digitalWrite(mB_speed, m_speed);
+  analogWrite(mA_speed, m_speed);
+  analogWrite(mB_speed, m_speed);
 }
 
 void stop_m() {
-  digitalWrite(mA_brake, HIGH);
-  digitalWrite(mB_brake, HIGH);
+  analogWrite(mA_speed, 0);
+  analogWrite(mB_speed, 0);
+  delay(500);
 }
 
 void rotation(float angle, bool clockwise) {
-  float yaw;
   if (clockwise) {
     rotate_r();
-    while (yaw <= angle) {
+    while (yaw >= angle) {
       delay(100);
-      yaw = get_gyro_angle();
+      get_gyro_angle();
+      Serial.println(yaw);
     }
     stop_m();
   } else {
     rotate_l();
-    while (yaw >= angle) {
+    while (yaw <= angle) {
       delay(100);
-      yaw = get_gyro_angle();
+      get_gyro_angle();
+      Serial.println(yaw);
     }
     stop_m();
   }
+  yaw = 0;
 }
 
 float get_gyro_angle() {

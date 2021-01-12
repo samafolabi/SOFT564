@@ -1,9 +1,11 @@
 #include <WiFi.h>
 #include <WebSocketsServer.h>
+#include <IRremote.h>
 
 #define RX 16
 #define TX 17
 #define MAX_CLIENTS 5
+#define ir 15
 
 const char* ssid = "test_ssid";
 const char* pass = "password";
@@ -29,9 +31,14 @@ IPAddress subnet(255, 255, 0, 0);
 
 WebSocketsServer ws = WebSocketsServer(ws_port);
 
+IRrecv remote(ir);
+
 Subscriber subscribers[MAX_CLIENTS];
 
 bool x1 = false, x2 = false;
+
+decode_results results;
+unsigned long remote_value = 0;
 
 void notify(char d, String str) {
   for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -174,6 +181,9 @@ void setup() {
   Serial2.begin(9600, SERIAL_8N1, RX, TX);
   pinMode(2, OUTPUT);
 
+  remote.enableIRIn();
+  remote.blink13(true);
+
   WiFi.config(IP, gateway, subnet);
   WiFi.begin(ssid, pass);
   while (WiFi.status() != WL_CONNECTED) {
@@ -299,6 +309,39 @@ void loop() {
               }
             }
           }
+        }
+      }
+
+      if (remote.decode(&results)) {
+        remote.resume();
+        delay(200);
+        String line = "";
+        if (results.value == remote_value) {
+          remote_value = 0;
+          line = "STP";
+        } else {
+          switch (results.value) {
+            case 16718055:
+              line = "FWD";
+              remote_value = results.value;
+              break;
+            case 16730805:
+              line = "BWD";
+              remote_value = results.value;
+              break;
+            case 16716015:
+              line = "LFT";
+              remote_value = results.value;
+              break;
+            case 16734885:
+              line = "RGT";
+              remote_value = results.value;
+              break;
+            default:
+              break;
+          }
+          Serial2.print('_');
+          Serial2.print(line);
         }
       }
 
